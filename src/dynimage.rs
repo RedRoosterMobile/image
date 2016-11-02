@@ -6,6 +6,8 @@ use std::iter;
 use std::ascii::AsciiExt;
 use num_iter;
 
+use regex::Regex;
+
 #[cfg(feature = "ppm")]
 use ppm;
 #[cfg(feature = "gif_codec")]
@@ -95,6 +97,33 @@ macro_rules! dynamic_map(
 );
 
 impl DynamicImage {
+
+    // "FFFFFF" -> (255,255,255)
+    fn hex2rgb(&self,hex_color: &str) -> (u8,u8,u8) {
+        let strr = hex_color;
+        // see: https://docs.rs/slack-hook/0.1.3/slack_hook/struct.HexColor.html
+        // when in loop save some memory
+        lazy_static! {
+            // TODO:  current regex OR single chars that need to be doubled "#abc" -> "#AABBCC"
+            static ref RE: Regex = Regex::new(r"([0-9A-Fa-f]{2})([0-9A-Fa-f]{2})([0-9A-Fa-f]{2})").unwrap();
+        }
+        //let re = Regex::new(r"([0-9A-Fa-f]{2})([0-9A-Fa-f]{2})([0-9A-Fa-f]{2})").unwrap();
+        for cap in RE.captures_iter(&strr) {
+            //println!("f: {} s: {} t: {}",cap.at(1).unwrap_or(""),cap.at(2).unwrap_or(""), cap.at(3).unwrap_or(""));
+            return (
+                u8::from_str_radix(cap.at(1).unwrap_or(""), 16).unwrap(),
+                u8::from_str_radix(cap.at(2).unwrap_or(""), 16).unwrap(),
+                u8::from_str_radix(cap.at(3).unwrap_or(""), 16).unwrap()
+                /*
+                u32::from_str_radix(&strr[0..2], 16).unwrap(),
+                u32::from_str_radix(&strr[2..4], 16).unwrap(),
+                u32::from_str_radix(&strr[4..6], 16).unwrap()
+                */
+            )
+        }
+        return (0,0,0)
+    }
+
     /// Creates a dynamic image backed by a buffer of grey pixels.
     pub fn new_luma8(w: u32, h: u32) -> DynamicImage {
         DynamicImage::ImageLuma8(ImageBuffer::new(w, h))
@@ -316,7 +345,7 @@ impl DynamicImage {
     pub fn adjust_contrast(&self, c: f32) -> DynamicImage {
         dynamic_map!(*self, ref p => imageops::contrast(p, c))
     }
-    
+
     /// The sepia filter effect is a brownish-grey to dark yellowish-brown tone
     /// imparted to an image and is expressed in percentages from 0.0 to 1.0
     /// `value` is the amount/percentage e.g. sepia(1.0) just like the css filter sepia(100%)
@@ -324,6 +353,24 @@ impl DynamicImage {
         dynamic_map!(*self, ref p => imageops::sepia(p, value))
     }
 
+    /// Tints an image with a given color by a given amount
+    /// from 0.0 to 1.0 * r,g,b
+    /// `value` is the amount/percentage
+    /// `hex_str` is the color like "#AABBCC" or "AABBCC"
+    pub fn tint_hex(&self, value: f64, hex_str: &str) -> DynamicImage {
+        let rgb = self.hex2rgb(hex_str);
+        dynamic_map!(*self, ref p => imageops::tint(p, value, rgb.0, rgb.1, rgb.2))
+    }
+
+    /// Tints an image with a given color by a given amount
+    /// from 0.0 to 1.0 * r,g,b
+    /// `value` is the amount/percentage
+    /// `r` is between 0 and 255u8
+    /// `g` is between 0 and 255u8
+    /// `b` is between 0 and 255u8
+    pub fn tint_rgb(&self, value: f64, red: u8, green: u8, blue: u8) -> DynamicImage {
+        dynamic_map!(*self, ref p => imageops::tint(p, value, red, green, blue))
+    }
     /// Brighten the pixels of this image.
     /// ```value``` is the amount to brighten each pixel by.
     /// Negative values decrease the brightness and positive values increase it.
