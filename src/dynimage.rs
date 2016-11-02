@@ -98,7 +98,7 @@ macro_rules! dynamic_map(
 
 impl DynamicImage {
 
-    // "FFFFFF" -> (255,255,255)
+    // "#FFFFFF" -> (255,255,255)
     fn hex2rgb(&self,hex_color: &str) -> (u8,u8,u8) {
         let strr = hex_color;
         // see: https://docs.rs/slack-hook/0.1.3/slack_hook/struct.HexColor.html
@@ -107,18 +107,11 @@ impl DynamicImage {
             // TODO:  current regex OR single chars that need to be doubled "#abc" -> "#AABBCC"
             static ref RE: Regex = Regex::new(r"([0-9A-Fa-f]{2})([0-9A-Fa-f]{2})([0-9A-Fa-f]{2})").unwrap();
         }
-        //let re = Regex::new(r"([0-9A-Fa-f]{2})([0-9A-Fa-f]{2})([0-9A-Fa-f]{2})").unwrap();
         for cap in RE.captures_iter(&strr) {
-            //println!("f: {} s: {} t: {}",cap.at(1).unwrap_or(""),cap.at(2).unwrap_or(""), cap.at(3).unwrap_or(""));
             return (
                 u8::from_str_radix(cap.at(1).unwrap_or(""), 16).unwrap(),
                 u8::from_str_radix(cap.at(2).unwrap_or(""), 16).unwrap(),
                 u8::from_str_radix(cap.at(3).unwrap_or(""), 16).unwrap()
-                /*
-                u32::from_str_radix(&strr[0..2], 16).unwrap(),
-                u32::from_str_radix(&strr[2..4], 16).unwrap(),
-                u32::from_str_radix(&strr[4..6], 16).unwrap()
-                */
             )
         }
         return (0,0,0)
